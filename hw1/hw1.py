@@ -37,9 +37,14 @@ class MLP:
         """
         Calculates loss based on given loss fn for all examples
         """
-        n = Y.shape[1]  # num examples
-        logprobs = np.multiply(np.log(A2), Y) + np.multiply((1 - Y), np.log(1 - A2))
-        loss = -np.sum(logprobs) / n
+        loss = None
+        if self.loss_fn == "bce":  # bce loss
+            n = Y.shape[1]  # num examples
+            logprobs = np.multiply(np.log(A2), Y) + np.multiply((1 - Y), np.log(1 - A2))
+            loss = -np.sum(logprobs) / n
+        else:  # mse loss
+            n = Y.shape[1]
+            loss = np.sum((A2 - Y) ** 2) / n
         return loss
 
     def back_prop(self, X, Y, A1, A2):
@@ -283,7 +288,91 @@ def two_gaussians_bce():
     )
 
 
+def xor_mse():
+    k = 20
+    XorMSE = MLP(k, "mse")
+    X_train, Y_train = read_csv("xor_train.csv")
+    X_valid, Y_valid = read_csv("xor_valid.csv")
+    train_loss, valid_loss = XorMSE.train(X_train, Y_train, X_valid, Y_valid, 0.1, 1000)
+    # plot curves
+    print_learning_curves(train_loss, valid_loss, f"XOR MSE")
+
+    # testing
+    X_test, Y_test = read_csv("xor_test.csv")
+    Y_pred = XorMSE.predict(X_test)
+    acc = XorMSE.accuracy(Y_test, Y_pred)
+    print(f"accuracy on test set: {acc}")
+    acc = int(acc * 100)
+    print_decision_boundary(XorMSE, X_test, Y_test, f"XOR MSE, k={k}, acc={acc}%")
+
+
+def center_surround_mse():
+    k = 16
+    CSMSE = MLP(k, "mse")
+    X_train, Y_train = read_csv("center_surround_train.csv")
+    X_valid, Y_valid = read_csv("center_surround_valid.csv")
+    train_loss, valid_loss = CSMSE.train(X_train, Y_train, X_valid, Y_valid, 0.1, 800)
+    print_learning_curves(train_loss, valid_loss, f"Center Surround MSE")
+
+    # testing
+    X_test, Y_test = read_csv("center_surround_test.csv")
+    Y_pred = CSMSE.predict(X_test)
+    acc = CSMSE.accuracy(Y_test, Y_pred)
+    print(f"accuracy on test set: {acc}")
+    acc = int(acc * 100)
+    print_decision_boundary(
+        CSMSE, X_test, Y_test, f"Center Surround MSE, k={k}, acc={acc}%"
+    )
+
+
+def spiral_mse():
+    k = 20
+    SpiralMSE = MLP(k, "mse")
+    X_train, Y_train = read_csv("spiral_train.csv")
+    X_valid, Y_valid = read_csv("spiral_valid.csv")
+    train_loss, valid_loss = SpiralMSE.train(
+        X_train, Y_train, X_valid, Y_valid, 0.05, 1500
+    )
+    print_learning_curves(train_loss, valid_loss, f"Spiral MSE")
+
+    # testing
+    X_test, Y_test = read_csv("spiral_test.csv")
+    Y_pred = SpiralMSE.predict(X_test)
+    acc = SpiralMSE.accuracy(Y_test, Y_pred)
+    print(f"accuracy on test set: {acc}")
+    acc = int(acc * 100)
+    print_decision_boundary(
+        SpiralMSE, X_test, Y_test, f"Spiral MSE, k={k}, acc = {acc}%"
+    )
+
+
+def two_gaussians_mse():
+    k = 20
+    GaussianMSE = MLP(k, "mse")
+    X_train, Y_train = read_csv("two_gaussians_train.csv")
+    X_valid, Y_valid = read_csv("two_gaussians_valid.csv")
+    train_loss, valid_loss = GaussianMSE.train(
+        X_train, Y_train, X_valid, Y_valid, 0.1, 1000
+    )
+    print_learning_curves(train_loss, valid_loss, f"Two Gaussians MSE")
+
+    # testing
+    X_test, Y_test = read_csv("two_gaussians_test.csv")
+    Y_pred = GaussianMSE.predict(X_test)
+    acc = GaussianMSE.accuracy(Y_test, Y_pred)
+    print(f"accuracy on test set: {acc}")
+    acc = int(acc * 100)
+    print_decision_boundary(
+        GaussianMSE, X_test, Y_test, f"Two Gaussians MSE, k={k}, acc = {acc}%"
+    )
+
+
+# spiral_bce()
+# two_gaussians_bce()
 # xor_bce()
 # center_surround_bce()
-spiral_bce()
-# two_gaussians_bce()
+
+xor_mse()
+center_surround_mse()
+spiral_mse()
+two_gaussians_mse()
