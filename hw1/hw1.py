@@ -59,7 +59,7 @@ class MLP:
         if self.loss_fn == "bce":  # binary cross entropy
             dZ2 = A2 - Y
         elif self.loss_fn == "mse":  # mean squared error
-            pass
+            dZ2 = (A2 - Y) * self.sigmoid_derivative(A2)
         else:
             raise "error: not implemented"
         dW2 = np.dot(dZ2, A1.T) / n
@@ -86,31 +86,39 @@ class MLP:
         """
         return 1 / (1 + np.exp(-z))
 
+    def sigmoid_derivative(self, z):
+        """
+        Derivative of the sigmoid function.
+        """
+        s = self.sigmoid(z)
+        return s * (1 - s)
+
     def ReLU(self, z):
         """
         ReLU activation function
         """
         return np.maximum(0, z)
 
-    def train(self, X, Y, lr, epochs):
+    def train(self, X, Y, X_valid, Y_valid, lr, epochs):
         """
         Run the training loop and generate loss curves
         """
-        loss_data = []
+        train_loss = []
+        valid_loss = []
         for epoch in range(epochs):
             A1, A2 = self.forward_pass(X)
             loss = self.compute_loss(A2, Y)
             dW1, db1, dW2, db2 = self.back_prop(X, Y, A1, A2)
             self.update_parameters(lr, dW1, db1, dW2, db2)
+            train_loss.append(loss)
+            vA1, vA2 = self.forward_pass(X_valid)
+            vLoss = self.compute_loss(vA2, Y_valid)
+            valid_loss.append(vLoss)
 
             if epoch % 50 == 0:
-                print(f"Epoch {epoch}, loss: {loss}")
-                # print(f"dW1: {dW1}, db1: {db1}, dW2: {dW2}, db2: {db2}")
-                # self.print_params()
-                # input()
+                print(f"Epoch {epoch}, training loss: {loss}, valid loss: {vLoss}")
 
-            loss_data.append(loss)
-        return loss_data
+        return train_loss, valid_loss
 
     def predict(self, X):
         """
@@ -171,79 +179,111 @@ def print_decision_boundary(model, X, Y, title):
     plt.show()
 
 
+def print_learning_curves(train_loss, valid_loss, title):
+    # Generate x-axis values (epochs, iterations, etc.)
+    epochs = range(1, len(train_loss) + 1)
+
+    # Plotting the loss values
+    plt.plot(epochs, train_loss, label=f"{title} Training Loss")
+
+    plt.xlabel("Epochs")
+    plt.ylabel("Loss")
+    plt.title("Training Loss Over Epochs")
+    plt.legend()
+    plt.savefig(f"plots/{title} Train Loss Curve")
+    plt.show()
+
+    # Plotting the loss values
+    plt.plot(epochs, valid_loss, label=f"{title} Valid Loss")
+    plt.xlabel("Epochs")
+    plt.ylabel("Loss")
+    plt.title("Valid Loss Over Epochs")
+    plt.legend()
+    plt.savefig(f"plots/{title} Valid Loss Curve")
+    plt.show()
+
+
 def xor_bce():
     k = 20
     XorBCE = MLP(k, "bce")
     X_train, Y_train = read_csv("xor_train.csv")
-    XorBCE.train(X_train, Y_train, 0.1, 1000)
-
-    # finetuning k values and num epochs using validation set
     X_valid, Y_valid = read_csv("xor_valid.csv")
-    Y_pred = XorBCE.predict(X_valid)
-    print(f"accuracy on validation set: {XorBCE.accuracy(Y_valid, Y_pred)}")
+    train_loss, valid_loss = XorBCE.train(X_train, Y_train, X_valid, Y_valid, 0.1, 1000)
+    # plot curves
+    print_learning_curves(train_loss, valid_loss, f"XOR BCE")
 
     # testing
     X_test, Y_test = read_csv("xor_test.csv")
     Y_pred = XorBCE.predict(X_test)
-    print(f"accuracy on test set: {XorBCE.accuracy(Y_test, Y_pred)}")
-    print_decision_boundary(XorBCE, X_test, Y_test, f"XOR BCE, k={k}")
+    acc = XorBCE.accuracy(Y_test, Y_pred)
+    print(f"accuracy on test set: {acc}")
+    acc = int(acc * 100)
+    print_decision_boundary(XorBCE, X_test, Y_test, f"XOR BCE, k={k}, acc={acc}%")
 
 
 def center_surround_bce():
     k = 16
     CSBCE = MLP(k, "bce")
     X_train, Y_train = read_csv("center_surround_train.csv")
-    CSBCE.train(X_train, Y_train, 0.1, 800)
-
-    # finetuning k values and num epochs using validation set
     X_valid, Y_valid = read_csv("center_surround_valid.csv")
-    Y_pred = CSBCE.predict(X_valid)
-    print(f"accuracy on validation set: {CSBCE.accuracy(Y_valid, Y_pred)}")
+    train_loss, valid_loss = CSBCE.train(X_train, Y_train, X_valid, Y_valid, 0.1, 800)
+    print_learning_curves(train_loss, valid_loss, f"Center Surround BCE")
 
     # testing
     X_test, Y_test = read_csv("center_surround_test.csv")
     Y_pred = CSBCE.predict(X_test)
-    print(f"accuracy on test set: {CSBCE.accuracy(Y_test, Y_pred)}")
-    print_decision_boundary(CSBCE, X_test, Y_test, f"Center Surround BCE, k={k}")
+    acc = CSBCE.accuracy(Y_test, Y_pred)
+    print(f"accuracy on test set: {acc}")
+    acc = int(acc * 100)
+    print_decision_boundary(
+        CSBCE, X_test, Y_test, f"Center Surround BCE, k={k}, acc={acc}%"
+    )
 
 
 def spiral_bce():
-    k = 24
+    k = 20
     SpiralBCE = MLP(k, "bce")
     X_train, Y_train = read_csv("spiral_train.csv")
-    SpiralBCE.train(X_train, Y_train, 0.1, 1500)
-
-    # finetuning k values and num epochs using validation set
     X_valid, Y_valid = read_csv("spiral_valid.csv")
-    Y_pred = SpiralBCE.predict(X_valid)
-    print(f"accuracy on validation set: {SpiralBCE.accuracy(Y_valid, Y_pred)}")
+    train_loss, valid_loss = SpiralBCE.train(
+        X_train, Y_train, X_valid, Y_valid, 0.05, 1500
+    )
+    print_learning_curves(train_loss, valid_loss, f"Spiral BCE")
+    print_decision_boundary(SpiralBCE, X_train, Y_train, f"Spiral BCE Train Decision")
 
     # testing
     X_test, Y_test = read_csv("spiral_test.csv")
     Y_pred = SpiralBCE.predict(X_test)
-    print(f"accuracy on test set: {SpiralBCE.accuracy(Y_test, Y_pred)}")
-    print_decision_boundary(SpiralBCE, X_test, Y_test, f"Spiral BCE, k={k}")
+    acc = SpiralBCE.accuracy(Y_test, Y_pred)
+    print(f"accuracy on test set: {acc}")
+    acc = int(acc * 100)
+    print_decision_boundary(
+        SpiralBCE, X_test, Y_test, f"Spiral BCE, k={k}, acc = {acc}%"
+    )
 
 
 def two_gaussians_bce():
     k = 20
     GaussianBCE = MLP(k, "bce")
     X_train, Y_train = read_csv("two_gaussians_train.csv")
-    GaussianBCE.train(X_train, Y_train, 0.1, 1000)
-
-    # finetuning k values and num epochs using validation set
     X_valid, Y_valid = read_csv("two_gaussians_valid.csv")
-    Y_pred = GaussianBCE.predict(X_valid)
-    print(f"accuracy on validation set: {GaussianBCE.accuracy(Y_valid, Y_pred)}")
+    train_loss, valid_loss = GaussianBCE.train(
+        X_train, Y_train, X_valid, Y_valid, 0.1, 1000
+    )
+    print_learning_curves(train_loss, valid_loss, f"Two Gaussians BCE")
 
     # testing
     X_test, Y_test = read_csv("two_gaussians_test.csv")
     Y_pred = GaussianBCE.predict(X_test)
-    print(f"accuracy on test set: {GaussianBCE.accuracy(Y_test, Y_pred)}")
-    print_decision_boundary(GaussianBCE, X_test, Y_test, f"Two Gaussians BCE, k={k}")
+    acc = GaussianBCE.accuracy(Y_test, Y_pred)
+    print(f"accuracy on test set: {acc}")
+    acc = int(acc * 100)
+    print_decision_boundary(
+        GaussianBCE, X_test, Y_test, f"Two Gaussians BCE, k={k}, acc = {acc}%"
+    )
 
 
 # xor_bce()
 # center_surround_bce()
-# spiral_bce()
+spiral_bce()
 # two_gaussians_bce()
