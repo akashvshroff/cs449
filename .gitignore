@@ -1,3 +1,5 @@
 Deep Learning, Goodfellow.pdf
 
 .ipynb_checkpoints/
+*.csv
+*.pth
